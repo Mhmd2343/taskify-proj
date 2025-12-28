@@ -118,22 +118,22 @@ fun LoginScreen() {
             Text("Login")
         }
 
-        // ADD THIS TEST BUTTON
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = {
-                // Direct test navigation to Dashboard
-                println("DEBUG: Testing direct navigation to Dashboard")
-                val intent = Intent(context, DashboardActivity::class.java)
-                context.startActivity(intent)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Green
-            )
-        ) {
-            Text("TEST: Go to Dashboard")
-        }
+//        // ADD THIS TEST BUTTON
+//        Spacer(modifier = Modifier.height(12.dp))
+//        Button(
+//            onClick = {
+//                // Direct test navigation to Dashboard
+//                println("DEBUG: Testing direct navigation to Dashboard")
+//                val intent = Intent(context, DashboardActivity::class.java)
+//                context.startActivity(intent)
+//            },
+//            modifier = Modifier.fillMaxWidth(),
+//            colors = ButtonDefaults.buttonColors(
+//                containerColor = Color.Green
+//            )
+//        ) {
+//            Text("TEST: Go to Dashboard")
+//        }
 
         Spacer(modifier = Modifier.height(12.dp))
 

@@ -1,0 +1,7 @@
+[
+  { "name": "Lebanon", "iso": "LB", "phoneCode": "+961" },
+  { "name": "France", "iso": "FR", "phoneCode": "+33" },
+  { "name": "United States", "iso": "US", "phoneCode": "+1" },
+  { "name": "United Kingdom", "iso": "GB", "phoneCode": "+44" },
+  { "name": "Germany", "iso": "DE", "phoneCode": "+49" }
+]
