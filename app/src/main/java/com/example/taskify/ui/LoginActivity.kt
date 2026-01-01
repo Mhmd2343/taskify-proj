@@ -1,12 +1,16 @@
+// app/src/main/java/com/example/taskify/ui/LoginActivity.kt
 package com.example.taskify.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -15,18 +19,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.taskify.auth.GoogleAuthUiClient
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Wrap with MaterialTheme
             MaterialTheme {
                 LoginScreen()
             }
@@ -34,13 +39,41 @@ class LoginActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen() {
     val context = LocalContext.current
+    val activity = context as Activity
+    val scope = rememberCoroutineScope()
+
+    val auth = remember { FirebaseAuth.getInstance() }
+    val googleAuthUiClient = remember { GoogleAuthUiClient(activity.applicationContext) }
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+
+    val oneTapLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val data = result.data ?: return@rememberLauncherForActivityResult
+
+        loading = true
+        scope.launch {
+            val ok = googleAuthUiClient.signInWithIntent(data)
+            loading = false
+
+            if (ok) {
+                Toast.makeText(context, "Google login successful!", Toast.LENGTH_SHORT).show()
+                context.startActivity(Intent(context, HomeActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                })
+            } else {
+                Toast.makeText(context, "Google login failed", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -48,17 +81,12 @@ fun LoginScreen() {
             .padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Login",
-            style = MaterialTheme.typography.headlineLarge
-        )
-
+        Text(text = "Login", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Email Field
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it.trim() },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -70,37 +98,22 @@ fun LoginScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password Field
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = if (showPassword) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
+            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done
             ),
             trailingIcon = {
-                IconButton(
-                    onClick = { showPassword = !showPassword }
-                ) {
+                IconButton(onClick = { showPassword = !showPassword }) {
                     Icon(
-                        imageVector = if (showPassword) {
-                            Icons.Default.VisibilityOff
-                        } else {
-                            Icons.Default.Visibility
-                        },
-                        contentDescription = if (showPassword) {
-                            "Hide password"
-                        } else {
-                            "Show password"
-                        }
+                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = null
                     )
                 }
             }
@@ -108,70 +121,63 @@ fun LoginScreen() {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Login Button
         Button(
             onClick = {
-                performLogin(context, email, password)
+                if (email.isBlank() || password.isBlank()) {
+                    Toast.makeText(context, "Enter email and password", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                loading = true
+                auth.signInWithEmailAndPassword(email, password)
+                    .addOnCompleteListener { t ->
+                        loading = false
+                        if (t.isSuccessful) {
+                            Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                            context.startActivity(Intent(context, HomeActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            })
+                        } else {
+                            Toast.makeText(context, t.exception?.message ?: "Login failed", Toast.LENGTH_LONG).show()
+                        }
+                    }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !loading
         ) {
-            Text("Login")
+            Text(if (loading) "Loading..." else "Login")
         }
-
-//        // ADD THIS TEST BUTTON
-//        Spacer(modifier = Modifier.height(12.dp))
-//        Button(
-//            onClick = {
-//                // Direct test navigation to Dashboard
-//                println("DEBUG: Testing direct navigation to Dashboard")
-//                val intent = Intent(context, DashboardActivity::class.java)
-//                context.startActivity(intent)
-//            },
-//            modifier = Modifier.fillMaxWidth(),
-//            colors = ButtonDefaults.buttonColors(
-//                containerColor = Color.Green
-//            )
-//        ) {
-//            Text("TEST: Go to Dashboard")
-//        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Register Button
-        TextButton(
+        OutlinedButton(
             onClick = {
-                context.startActivity(Intent(context, RegisterActivity::class.java))
+                if (loading) return@OutlinedButton
+                scope.launch {
+                    googleAuthUiClient.signOut()
+                    val intentSender = googleAuthUiClient.signIn()
+                    if (intentSender == null) {
+                        Toast.makeText(context, "Google sign-in not available. Check google-services.json + SHA-1.", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    oneTapLauncher.launch(
+                        IntentSenderRequest.Builder(intentSender).build()
+                    )
+                }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !loading
+        ) {
+            Text("Continue with Google")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TextButton(
+                onClick = { context.startActivity(Intent(context, RegisterActivity::class.java)) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !loading
         ) {
             Text("Don't have an account? Register")
         }
-    }
-}
-
-private fun performLogin(context: android.content.Context, email: String, password: String) {
-    if (email.isEmpty() || password.isEmpty()) {
-        Toast.makeText(context, "Please enter email and password", Toast.LENGTH_SHORT).show()
-        return
-    }
-
-    val prefs = context.getSharedPreferences("UserSession", android.content.Context.MODE_PRIVATE)
-    val savedEmail = prefs.getString("email", "") ?: ""
-    val savedPassword = prefs.getString("password", "") ?: ""
-
-    // Debug logs
-    println("DEBUG Login Check:")
-    println("  Entered: $email, Saved: $savedEmail")
-    println("  Pass Entered: $password, Pass Saved: $savedPassword")
-
-    if (email == savedEmail && password == savedPassword) {
-        Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
-
-        // THIS LINE SHOULD NAVIGATE TO DashboardActivity:
-        val intent = Intent(context, DashboardActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        context.startActivity(intent)
-    } else {
-        Toast.makeText(context, "Wrong email or password", Toast.LENGTH_SHORT).show()
     }
 }

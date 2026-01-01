@@ -4,7 +4,6 @@ import android.content.Context
 import com.example.taskify.R
 import org.json.JSONArray
 
-// Data class (RENAMED to avoid redeclaration issue)
 data class PhoneCountry(
     val name: String,
     val iso: String,
@@ -15,30 +14,48 @@ data class PhoneCountry(
 object CountryUtils {
 
     fun loadCountries(context: Context): List<PhoneCountry> {
-        val countries = mutableListOf<PhoneCountry>()
+        val result = mutableListOf<PhoneCountry>()
 
-        val inputStream = context.resources.openRawResource(R.raw.countries)
-        val json = inputStream.bufferedReader().use { it.readText() }
+        val json = context.resources
+            .openRawResource(R.raw.countries)
+            .bufferedReader()
+            .use { it.readText() }
 
         val jsonArray = JSONArray(json)
 
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
 
-            val iso = obj.getString("iso")
+            val name = obj.optString("name", "").trim()
+            val iso = obj.optString("code", "").trim()
 
-            countries.add(
+            val rawDialCode = when (val v = obj.opt("dial_code")) {
+                is String -> v
+                else -> ""
+            }
+
+            val cleanedDialCode = rawDialCode
+                .replace(" ", "")   // removes spaces like "+1 684"
+                .trim()
+
+            if (name.isBlank() || iso.isBlank() || cleanedDialCode.isBlank()) continue
+            if (!cleanedDialCode.startsWith("+")) continue
+
+            result.add(
                 PhoneCountry(
-                    name = obj.getString("name"),
+                    name = name,
                     iso = iso,
-                    phoneCode = obj.getString("phoneCode"),
+                    phoneCode = cleanedDialCode,
                     flag = isoToFlag(iso)
                 )
             )
         }
 
-        return countries
+        return result
+            .distinctBy { it.iso }
+            .sortedBy { it.name }
     }
+
 
     private fun isoToFlag(iso: String): String {
         return iso.uppercase()
