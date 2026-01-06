@@ -1,14 +1,35 @@
 [versions]
 agp = "8.7.3"
-kotlin = "2.1.0"
+kotlin = "2.0.21"
+
 coreKtx = "1.13.0"
+lifecycleRuntimeKtx = "2.8.0"
+activityCompose = "1.9.3"
+
+composeBom = "2024.08.00"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.8.0"
-activityCompose = "1.9.3"
-composeBom = "2024.08.00"
-composeCompiler = "2.1.0"
+
+googleServices = "4.4.4"
+
+# Needed for GoogleAuthUiClient
+playServicesAuth = "21.4.0"          # :contentReference[oaicite:0]{index=0}
+playServicesIdentity = "20.7.0"
+playServicesTasks = "18.2.0"
+
+coroutinesPlayServices = "1.10.2"    # :contentReference[oaicite:1]{index=1}
+
+# Needed for PhoneNumberUtil / NumberParseException
+libphonenumberAndroid = "8.13.49"    # :contentReference[oaicite:2]{index=2}
+
+# Firebase (use BoM so you don't set versions per firebase library)
+firebaseBom = "34.7.0"              # :contentReference[oaicite:3]{index=3}
+
+libphonenumber = "8.13.49"
+
+navigationCompose = "2.8.5"
+
 
 
 [libraries]
@@ -26,17 +47,37 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-
-# ADD THIS LINE FOR ICONS:
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+# Google / Firebase
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+play-services-identity = { group = "com.google.android.gms", name = "play-services-identity", version.ref = "playServicesIdentity" }
+play-services-tasks = { group = "com.google.android.gms", name = "play-services-tasks", version.ref = "playServicesTasks" }
+
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
+
+# Firebase
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+
+# Phone validation
+libphonenumber-android = { group = "io.michaelrocks", name = "libphonenumber-android", version.ref = "libphonenumberAndroid" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-espresso-core = { group = "androidx.test.espresso", name =  "espresso-core", version.ref = "espressoCore" }
+
+google-libphonenumber = { group = "com.googlecode.libphonenumber", name = "libphonenumber", version.ref = "libphonenumber" }
+
+
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version = "1.9.24" }
-google-services = { id = "com.google.gms.google-services", version = "4.4.4" }
-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "composeCompiler" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

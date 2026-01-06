@@ -1,4 +1,3 @@
-// app/src/main/java/com/example/taskify/ui/LoginActivity.kt
 package com.example.taskify.ui
 
 import android.app.Activity
@@ -25,17 +24,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.taskify.auth.GoogleAuthUiClient
+import com.example.taskify.ui.admin.AdminMainActivity
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import com.example.taskify.ui.teacher.TeacherMainActivity
+import com.google.firebase.firestore.FirebaseFirestore
+import com.example.taskify.ui.admin.AdminStorage
+
+
+
+private const val ADMIN_EMAIL = "admin@ad.edu.lb"
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme {
-                LoginScreen()
-            }
-        }
+        setContent { MaterialTheme { LoginScreen() } }
     }
 }
 
@@ -53,6 +56,29 @@ fun LoginScreen() {
     var showPassword by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
 
+    fun goNext(normalizedEmail: String) {
+        if (normalizedEmail == ADMIN_EMAIL) {
+            val i = Intent(context, AdminMainActivity::class.java)
+            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            context.startActivity(i)
+            return
+        }
+
+        val storage = AdminStorage(context)
+        val isTeacher = storage.getAllTeachers().any { it.email.trim().lowercase() == normalizedEmail }
+
+        val next = if (isTeacher) {
+            Intent(context, com.example.taskify.ui.teacher.TeacherMainActivity::class.java)
+        } else {
+            Intent(context, HomeActivity::class.java)
+        }
+
+        next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        context.startActivity(next)
+    }
+
+
+
     val oneTapLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -63,12 +89,10 @@ fun LoginScreen() {
         scope.launch {
             val ok = googleAuthUiClient.signInWithIntent(data)
             loading = false
-
             if (ok) {
+                val userEmail = auth.currentUser?.email?.trim()?.lowercase().orEmpty()
                 Toast.makeText(context, "Google login successful!", Toast.LENGTH_SHORT).show()
-                context.startActivity(Intent(context, HomeActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                })
+                goNext(userEmail)
             } else {
                 Toast.makeText(context, "Google login failed", Toast.LENGTH_LONG).show()
             }
@@ -123,19 +147,21 @@ fun LoginScreen() {
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank()) {
+                val normalizedEmail = email.trim().lowercase()
+                val rawPassword = password
+
+                if (normalizedEmail.isBlank() || rawPassword.isBlank()) {
                     Toast.makeText(context, "Enter email and password", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
+
                 loading = true
-                auth.signInWithEmailAndPassword(email, password)
+                auth.signInWithEmailAndPassword(normalizedEmail, rawPassword)
                     .addOnCompleteListener { t ->
                         loading = false
                         if (t.isSuccessful) {
                             Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
-                            context.startActivity(Intent(context, HomeActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            })
+                            goNext(normalizedEmail)
                         } else {
                             Toast.makeText(context, t.exception?.message ?: "Login failed", Toast.LENGTH_LONG).show()
                         }
@@ -159,9 +185,7 @@ fun LoginScreen() {
                         Toast.makeText(context, "Google sign-in not available. Check google-services.json + SHA-1.", Toast.LENGTH_LONG).show()
                         return@launch
                     }
-                    oneTapLauncher.launch(
-                        IntentSenderRequest.Builder(intentSender).build()
-                    )
+                    oneTapLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -173,7 +197,7 @@ fun LoginScreen() {
         Spacer(modifier = Modifier.height(12.dp))
 
         TextButton(
-                onClick = { context.startActivity(Intent(context, RegisterActivity::class.java)) },
+            onClick = { context.startActivity(Intent(context, RegisterActivity::class.java)) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading
         ) {

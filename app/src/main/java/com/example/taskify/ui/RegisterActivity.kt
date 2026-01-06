@@ -25,6 +25,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.NumberParseException
 
+
+
 class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -381,6 +383,8 @@ fun generateStrongPassword(): String {
     return (1..12).map { chars.random() }.joinToString("")
 }
 
+
+
 fun validateAllInputs(
     firstName: String,
     lastName: String,
@@ -392,18 +396,30 @@ fun validateAllInputs(
     onError: (String) -> Unit
 ): Boolean {
 
+    val normalizedEmail = email.trim().lowercase()
+
     if (firstName.isBlank() || lastName.isBlank()) {
         onError("First and last name are required")
         return false
     }
 
-    if (email.isBlank()) {
+    if (normalizedEmail.isBlank()) {
         onError("Email is required")
         return false
     }
 
-    if (!Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(email)) {
+    if (!Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(normalizedEmail)) {
         onError("Invalid email format")
+        return false
+    }
+
+    if (normalizedEmail.endsWith("@ad.edu.lb")) {
+        onError("This email domain is reserved for admin accounts")
+        return false
+    }
+
+    if (normalizedEmail.endsWith("@tc.edu.lb")) {
+        onError("This email domain is reserved for teacher accounts")
         return false
     }
 
@@ -426,6 +442,9 @@ fun validateAllInputs(
     return true
 }
 
+
+
+
 fun saveRegistration(
     context: Context,
     firstName: String,
@@ -438,7 +457,7 @@ fun saveRegistration(
 ) {
     val auth = FirebaseAuth.getInstance()
 
-    auth.createUserWithEmailAndPassword(email.trim(), password)
+    auth.createUserWithEmailAndPassword(email.trim().lowercase(), password)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val prefs = context.getSharedPreferences("UserSession", Context.MODE_PRIVATE)
