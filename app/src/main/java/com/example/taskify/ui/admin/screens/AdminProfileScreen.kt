@@ -1,6 +1,8 @@
 package com.example.taskify.ui.admin.screens
 
+import android.content.Intent
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,11 +16,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.taskify.ui.LoginActivity
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -60,6 +65,7 @@ fun AdminProfileScreen(
     var showConfirm by remember { mutableStateOf(false) }
 
     var loading by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     val newFocus = remember { FocusRequester() }
     val confirmFocus = remember { FocusRequester() }
@@ -73,6 +79,15 @@ fun AdminProfileScreen(
         return null
     }
 
+    fun logoutNow() {
+        FirebaseAuth.getInstance().signOut()
+        val i = Intent(context, LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        context.startActivity(i)
+        (context as? ComponentActivity)?.finish()
+    }
+
     fun submit() {
         val msg = validate()
         if (msg != null) {
@@ -81,7 +96,6 @@ fun AdminProfileScreen(
         }
 
         loading = true
-
         scope.launch {
             try {
                 val email = user!!.email!!
@@ -103,6 +117,23 @@ fun AdminProfileScreen(
                 loading = false
             }
         }
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Logout") },
+            text = { Text("Do you want to logout?") },
+            confirmButton = {
+                Button(onClick = {
+                    showLogoutConfirm = false
+                    logoutNow()
+                }) { Text("Logout") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Column(
@@ -130,9 +161,7 @@ fun AdminProfileScreen(
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { newFocus.requestFocus() }
-            )
+            keyboardActions = KeyboardActions(onNext = { newFocus.requestFocus() })
         )
 
         OutlinedTextField(
@@ -150,9 +179,7 @@ fun AdminProfileScreen(
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { confirmFocus.requestFocus() }
-            )
+            keyboardActions = KeyboardActions(onNext = { confirmFocus.requestFocus() })
         )
 
         OutlinedTextField(
@@ -170,9 +197,7 @@ fun AdminProfileScreen(
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = { submit() }
-            )
+            keyboardActions = KeyboardActions(onDone = { submit() })
         )
 
         Button(
@@ -180,11 +205,17 @@ fun AdminProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading
         ) {
-            if (loading) {
-                CircularProgressIndicator()
-            } else {
-                Text("Update Password")
-            }
+            if (loading) CircularProgressIndicator() else Text("Update Password")
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { showLogoutConfirm = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !loading
+        ) {
+            Text("Logout")
         }
     }
 

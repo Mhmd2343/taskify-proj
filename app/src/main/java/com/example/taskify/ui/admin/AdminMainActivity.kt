@@ -45,6 +45,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 class AdminMainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        android.util.Log.d("ADMIN_UID", "Admin UID = $uid")
+
         setContent {
             MaterialTheme {
                 AdminRoot(
@@ -55,6 +59,7 @@ class AdminMainActivity : ComponentActivity() {
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

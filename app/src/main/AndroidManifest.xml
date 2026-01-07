@@ -14,6 +14,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Taskify">
 
+
+
         <activity
             android:name=".ui.LoginActivity"
             android:exported="true">
@@ -52,6 +54,7 @@
             android:name=".ui.teacher.TeacherMainActivity"
             android:exported="false" />
 
+        <activity android:name=".ui.admin.TeacherIndexActivity" android:exported="false" />
 
     </application>
 

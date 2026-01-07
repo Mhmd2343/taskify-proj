@@ -9,7 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.    compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -29,7 +29,6 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import com.example.taskify.ui.teacher.TeacherMainActivity
 import com.google.firebase.firestore.FirebaseFirestore
-import com.example.taskify.ui.admin.AdminStorage
 
 
 
@@ -64,18 +63,42 @@ fun LoginScreen() {
             return
         }
 
-        val storage = AdminStorage(context)
-        val isTeacher = storage.getAllTeachers().any { it.email.trim().lowercase() == normalizedEmail }
-
-        val next = if (isTeacher) {
-            Intent(context, com.example.taskify.ui.teacher.TeacherMainActivity::class.java)
-        } else {
-            Intent(context, HomeActivity::class.java)
+        if (normalizedEmail.endsWith("@tc.edu.lb")) {
+            val i = Intent(context, TeacherMainActivity::class.java)
+            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            context.startActivity(i)
+            return
         }
 
-        next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        context.startActivity(next)
+        val uid = auth.currentUser?.uid
+        if (uid.isNullOrBlank()) {
+            Toast.makeText(context, "Missing user session", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val db = FirebaseFirestore.getInstance()
+
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                val role = doc.getString("role")?.trim()?.lowercase().orEmpty()
+
+                val next = when (role) {
+                    "teacher" -> Intent(context, TeacherMainActivity::class.java)
+                    "admin" -> Intent(context, AdminMainActivity::class.java)
+                    else -> Intent(context, HomeActivity::class.java)
+                }
+
+                next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                context.startActivity(next)
+            }
+            .addOnFailureListener {
+                val next = Intent(context, HomeActivity::class.java)
+                next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                context.startActivity(next)
+            }
     }
+
+
 
 
 

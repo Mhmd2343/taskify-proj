@@ -29,6 +29,7 @@ class AdminStorage(private val context: Context) {
         val list = loadTeachersInternal().toMutableList()
         val existingIndex = list.indexOfFirst { it.teacherId == teacherId }
         val record = TeacherRecord(
+            uid = "",
             teacherId = teacherId,
             firstName = firstName,
             middleName = middleName,
@@ -73,6 +74,7 @@ class AdminStorage(private val context: Context) {
 
             out.add(
                 TeacherRecord(
+                    uid = "",
                     teacherId = o.optLong("teacherId"),
                     firstName = o.optString("firstName"),
                     middleName = o.optString("middleName").takeIf { it.isNotBlank() },
@@ -81,6 +83,7 @@ class AdminStorage(private val context: Context) {
                     subjectNames = subjects
                 )
             )
+
         }
         return out
     }

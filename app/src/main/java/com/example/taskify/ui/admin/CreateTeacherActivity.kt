@@ -1,5 +1,9 @@
 package com.example.taskify.ui.admin
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -14,14 +18,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import java.security.SecureRandom
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
+
+private const val TEACHER_DOMAIN = "@tc.edu.lb"
 
 class CreateTeacherActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +40,7 @@ class CreateTeacherActivity : ComponentActivity() {
 fun CreateTeacherScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val storage = remember { AdminStorage(context) }
+    val db = remember { FirebaseFirestore.getInstance() }
 
     val subjects = remember {
         listOf(
@@ -46,7 +52,6 @@ fun CreateTeacherScreen() {
     var firstName by remember { mutableStateOf("") }
     var middleName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
-
     var selected by remember { mutableStateOf(setOf<String>()) }
     var loading by remember { mutableStateOf(false) }
 
@@ -63,9 +68,17 @@ fun CreateTeacherScreen() {
     fun genPassword(len: Int = 10): String {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#\$%&*_-"
         val rnd = SecureRandom()
-        return buildString {
-            repeat(len) { append(chars[rnd.nextInt(chars.length)]) }
-        }
+        return buildString { repeat(len) { append(chars[rnd.nextInt(chars.length)]) } }
+    }
+
+    suspend fun nextTeacherId(): Long = withContext(Dispatchers.IO) {
+        val counterRef = db.collection("counters").document("teachers")
+        db.runTransaction { tx ->
+            val snap = tx.get(counterRef)
+            val current = (snap.getLong("next") ?: 1L)
+            tx.set(counterRef, mapOf("next" to (current + 1L)), SetOptions.merge())
+            current
+        }.await()
     }
 
     if (showDialog) {
@@ -85,11 +98,12 @@ fun CreateTeacherScreen() {
         }
 
         val credentialsText = """
-    Teacher Account Created
+Teacher Account Created
 
-    Email: $createdEmail
-    Password: $createdPass
-  """.trimIndent()
+ID: $createdId
+Email: $createdEmail
+Password: $createdPass
+""".trimIndent()
 
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -98,47 +112,34 @@ fun CreateTeacherScreen() {
                 Column {
                     Text("ID: $createdId")
                     Spacer(Modifier.height(8.dp))
-
                     Text("Email:")
                     Text(createdEmail)
-
                     Spacer(Modifier.height(8.dp))
-
                     Text("Password:")
                     Text(createdPass)
-
                     Spacer(Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { copy("Email", createdEmail) },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Copy Email") }
-
-                        OutlinedButton(
-                            onClick = { copy("Password", createdPass) },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Copy Password") }
+                        OutlinedButton(onClick = { copy("Email", createdEmail) }, modifier = Modifier.weight(1f)) {
+                            Text("Copy Email")
+                        }
+                        OutlinedButton(onClick = { copy("Password", createdPass) }, modifier = Modifier.weight(1f)) {
+                            Text("Copy Password")
+                        }
                     }
 
                     Spacer(Modifier.height(8.dp))
 
-                    Button(
-                        onClick = { copy("Credentials", credentialsText) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Button(onClick = { copy("Credentials", credentialsText) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Copy Both")
                     }
 
                     Spacer(Modifier.height(8.dp))
 
-                    OutlinedButton(
-                        onClick = { share(credentialsText) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    OutlinedButton(onClick = { share(credentialsText) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Share")
                     }
 
@@ -146,9 +147,7 @@ fun CreateTeacherScreen() {
                     Text("⚠️ Save these now. The password is shown once.")
                 }
             },
-            confirmButton = {
-                Button(onClick = { showDialog = false }) { Text("OK") }
-            }
+            confirmButton = { Button(onClick = { showDialog = false }) { Text("OK") } }
         )
     }
 
@@ -196,26 +195,16 @@ fun CreateTeacherScreen() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        selected = if (checked) selected - subj else selected + subj
-                    }
+                    .clickable { selected = if (checked) selected - subj else selected + subj }
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = checked,
-                    onCheckedChange = {
-                        selected = if (checked) selected - subj else selected + subj
-                    }
+                    onCheckedChange = { selected = if (checked) selected - subj else selected + subj }
                 )
                 Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(subj)
-                    val assignedId = storage.getAssignedTeacherIdForSubject(subj)
-                    if (assignedId != null) {
-                        Text("Currently assigned to teacher ID: $assignedId", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
+                Text(subj)
             }
             Divider()
         }
@@ -226,7 +215,7 @@ fun CreateTeacherScreen() {
             onClick = {
                 val fn = firstName.trim()
                 val ln = lastName.trim()
-                val mn = middleName.trim().ifBlank { "" }
+                val mn = middleName.trim()
                 val subjectsChosen = selected.toList()
 
                 if (fn.isBlank() || ln.isBlank()) {
@@ -239,24 +228,48 @@ fun CreateTeacherScreen() {
                 }
 
                 loading = true
-
                 scope.launch {
                     try {
-                        val teacherId = storage.nextTeacherId()
-                        val email = "${sanitizeFirstName(fn)}$teacherId@tc.edu.lb"
+                        val teacherId = nextTeacherId()
+                        val email = "${sanitizeFirstName(fn)}$teacherId$TEACHER_DOMAIN"
                         val pass = genPassword(10)
 
-                        withContext(Dispatchers.IO) {
+                        val uid = withContext(Dispatchers.IO) {
                             FirebaseSecondaryAuth.createUserWithoutAffectingAdmin(context, email, pass)
-                            storage.saveTeacher(
-                                teacherId = teacherId,
-                                firstName = fn,
-                                middleName = mn.ifBlank { null },
-                                lastName = ln,
-                                email = email,
-                                subjectNames = subjectsChosen
-                            )
-                            storage.assignSubjectsToTeacher(teacherId, subjectsChosen)
+                        }
+
+                        withContext(Dispatchers.IO) {
+                            db.collection("users").document(uid).set(
+                                mapOf(
+                                    "role" to "teacher",
+                                    "email" to email,
+                                    "createdAt" to FieldValue.serverTimestamp()
+                                ),
+                                SetOptions.merge()
+                            ).await()
+
+                            db.collection("teacherProfiles").document(uid).set(
+                                mapOf(
+                                    "teacherId" to teacherId,
+                                    "firstName" to fn,
+                                    "middleName" to mn.ifBlank { null },
+                                    "lastName" to ln,
+                                    "email" to email,
+                                    "subjects" to subjectsChosen,
+                                    "createdAt" to FieldValue.serverTimestamp()
+                                ),
+                                SetOptions.merge()
+                            ).await()
+
+                            db.collection("teachersIndex").document(email).set(
+                                mapOf(
+                                    "uid" to uid,
+                                    "email" to email,
+                                    "teacherId" to teacherId,
+                                    "createdAt" to FieldValue.serverTimestamp()
+                                ),
+                                SetOptions.merge()
+                            ).await()
                         }
 
                         createdId = teacherId
