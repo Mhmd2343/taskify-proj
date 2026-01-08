@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "435348418450-oiqkmdgvlagfk884vvm61i95u5mjakrk.apps.googleusercontent.com",
+          "client_id": "435348418450-7mva045t07lb2qqk5apj7ika241uk9rj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.taskify",
-            "certificate_hash": "b976ed25cb7ef3d983d567db633d212a2269d525"
+            "certificate_hash": "acb53971881f62d815941d1e211a6b6e1f3128a2"
           }
         },
         {

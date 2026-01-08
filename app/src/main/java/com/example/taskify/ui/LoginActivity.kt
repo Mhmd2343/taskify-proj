@@ -29,6 +29,10 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import com.example.taskify.ui.teacher.TeacherMainActivity
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.taskify.ui.student.StudentMainActivity
+import com.example.taskify.ui.student.StudentBootstrapper
+
+
 
 
 
@@ -56,7 +60,7 @@ fun LoginScreen() {
     var loading by remember { mutableStateOf(false) }
 
     fun goNext(normalizedEmail: String) {
-        if (normalizedEmail == ADMIN_EMAIL) {
+        if (normalizedEmail == ADMIN_EMAIL || normalizedEmail.endsWith("@ad.edu.lb")) {
             val i = Intent(context, AdminMainActivity::class.java)
             i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             context.startActivity(i)
@@ -70,33 +74,41 @@ fun LoginScreen() {
             return
         }
 
+        val i = Intent(context, StudentMainActivity::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        context.startActivity(i)
+
+
         val uid = auth.currentUser?.uid
         if (uid.isNullOrBlank()) {
             Toast.makeText(context, "Missing user session", Toast.LENGTH_LONG).show()
             return
         }
 
-        val db = FirebaseFirestore.getInstance()
+        loading = true
+        scope.launch {
+            try {
+                val ok = StudentBootstrapper(auth, FirebaseFirestore.getInstance()).ensureStudentDocs()
+                loading = false
 
-        db.collection("users").document(uid).get()
-            .addOnSuccessListener { doc ->
-                val role = doc.getString("role")?.trim()?.lowercase().orEmpty()
-
-                val next = when (role) {
-                    "teacher" -> Intent(context, TeacherMainActivity::class.java)
-                    "admin" -> Intent(context, AdminMainActivity::class.java)
-                    else -> Intent(context, HomeActivity::class.java)
+                if (!ok) {
+                    Toast.makeText(context, "Failed to prepare student account", Toast.LENGTH_LONG).show()
+                    return@launch
                 }
 
+                val next = Intent(context, StudentMainActivity::class.java)
                 next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 context.startActivity(next)
+
+            } catch (e: Exception) {
+                loading = false
+                Toast.makeText(context, e.message ?: "Student setup failed", Toast.LENGTH_LONG).show()
             }
-            .addOnFailureListener {
-                val next = Intent(context, HomeActivity::class.java)
-                next.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                context.startActivity(next)
-            }
+        }
+        return
+
     }
+
 
 
 
